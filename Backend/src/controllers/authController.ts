@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import { log } from "console";
 
 // In-memory OTP storage (for demo; use Redis or SMS service in production)
 const otpStore: { [key: string]: { otp: string; expires: number } } = {};
@@ -94,41 +95,46 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
 };
 
 export const googleLogin = async (req: Request, res: Response): Promise<void> => {
-  const { name, googleId } = req.body;
+  const { name, googleId, email } = req.body; // Ensure email is passed along with name and googleId
 
-  if (!name || !googleId) {
-    res.status(400).json({ message: "Name and Google ID are required" });
+  if (!name || !googleId || !email) {
+    res.status(400).json({ message: "Name, Google ID, and email are required" });
     return;
   }
 
   try {
-    let user = await User.findOne({ googleId });
+    // Check for an existing user by Google ID or email
+    let user = await User.findOne({ $or: [{ googleId }, { email }] }); 
+
+    // If user doesn't exist, create a new one
     if (!user) {
       user = await User.create({
         name,
         googleId,
+        email,
         phone: `${googleId}@google.com`, // Dummy phone to satisfy schema
       });
-    } else {
-      if (user.name !== name) {
-        user.name = name;
-        await user.save();
-      }
     }
 
+    // Generate a token
     const token = generateToken(user._id);
+
+    // Respond with user details and token
     res.status(200).json({
       _id: user._id,
       name: user.name,
       googleId: user.googleId,
+      email: user.email,
       token,
     });
   } catch (error: unknown) {
     console.error("Error in googleLogin:", error);
-    // Assert error as Error or provide fallback
+
+    // Handle error properly
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({ message: "Server error", error: errorMessage });
   }
 };
+
 
 

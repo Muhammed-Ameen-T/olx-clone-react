@@ -2,6 +2,7 @@ import { Schema, Document, model, Model } from "mongoose";
 
 export interface IUser extends Document {
   name: string;
+  eamil: string;
   phone?: string;
   googleId?: string;
 }
@@ -9,6 +10,7 @@ export interface IUser extends Document {
 const UserSchema = new Schema<IUser>(
   {
     name: { type: String, required: true },
+    email: { type: String, required: false },
     phone: { type: String, required: false, unique: true },
     googleId: { type: String, unique: true, sparse: true }, // Optional, unique if present
   },

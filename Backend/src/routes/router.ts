@@ -11,6 +11,6 @@ router.post("/verify-otp", verifyOTP as RequestHandler);
 router.post("/google-login", googleLogin as RequestHandler);
 
 // Advertisement Route
-router.post("/advertisements", authenticate, createAdvertisement as RequestHandler);
+router.post("/api/advertisements",  createAdvertisement as RequestHandler);
 
 export default router;

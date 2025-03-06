@@ -1,94 +1,21 @@
-import { useState } from 'react';
-import {Heart, MapPin} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Heart, MapPin } from 'lucide-react';
+import { Link } from 'react-router-dom'; // Add this import
 import Navbar from './Navbar';
 import Footer from './Footer';
-import SubFooter from './subFooter';
+import SubFooter from './SubFooter';
 
-// Sample product data
-const SAMPLE_PRODUCTS = [
-  {
-    id: 1,
-    title: 'iPhone 13 Pro - Excellent Condition',
-    price: 649.99,
-    location: 'Brooklyn, NY',
-    category: 'Electronics',
-    image: 'https://tse3.mm.bing.net/th?id=OIP.j4KdqaXpnhbN94WzVyHUhAHaE8&pid=Api&P=0&h=180',
-    isFeature: true,
-    date: '2 days ago'
-  },
-  {
-    id: 2,
-    title: 'Modern Sofa - Gray Fabric',
-    price: 349.50,
-    location: 'Queens, NY',
-    category: 'Furniture',
-    image: 'https://tse3.mm.bing.net/th?id=OIP.j4KdqaXpnhbN94WzVyHUhAHaE8&pid=Api&P=0&h=180',
-    isFeature: true,
-    date: '5 days ago'
-  },
-  {
-    id: 3,  
-    title: 'Mountain Bike - Trek 4500',
-    price: 275.00,
-    location: 'Manhattan, NY',
-    category: 'Sports',
-    image: 'https://tse3.mm.bing.net/th?id=OIP.j4KdqaXpnhbN94WzVyHUhAHaE8&pid=Api&P=0&h=180',
-    isFeature: true,
-    date: 'Today'
-  },
-  {
-    id: 4,
-    title: '2015 Honda Civic - Low Mileage',
-    price: 12500.00,
-    location: 'Staten Island, NY',
-    category: 'Vehicles',
-    image: 'https://tse3.mm.bing.net/th?id=OIP.j4KdqaXpnhbN94WzVyHUhAHaE8&pid=Api&P=0&h=180',
-    isFeature: true,
-    date: '1 day ago'
-  },
-  {
-    id: 5,
-    title: 'Gaming PC - RTX 3070, i9 Processor',
-    price: 1299.99,
-    location: 'Bronx, NY',
-    category: 'Electronics',
-    image: 'https://tse3.mm.bing.net/th?id=OIP.j4KdqaXpnhbN94WzVyHUhAHaE8&pid=Api&P=0&h=180',
-    isFeature: true,
-    date: '3 days ago'
-  },
-  {
-    id: 7,
-    title: 'Designer Watch - Limited Edition',
-    price: 499.00,
-    location: 'Brooklyn, NY',
-    category: 'Fashion',
-    image: 'https://tse3.mm.bing.net/th?id=OIP.j4KdqaXpnhbN94WzVyHUhAHaE8&pid=Api&P=0&h=180',
-    isFeature: true,
-    date: '1 week ago'
-  },
-  {
-    id: 8,
-    title: 'Designer Watch - Limited Edition',
-    price: 499.00,
-    location: 'Brooklyn, NY',
-    category: 'Fashion',
-    image: 'https://tse3.mm.bing.net/th?id=OIP.j4KdqaXpnhbN94WzVyHUhAHaE8&pid=Api&P=0&h=180',
-    isFeature: true,
-    date: '1 week ago'
-  },
-  {
-    id: 9,
-    title: 'Designer Watch - Limited Edition',
-    price: 499.00,
-    location: 'Brooklyn, NY',
-    category: 'Fashion',
-    image: 'https://tse3.mm.bing.net/th?id=OIP.j4KdqaXpnhbN94WzVyHUhAHaE8&pid=Api&P=0&h=180',
-    isFeature: true,
-    date: '1 week ago'
-  }
-];
+interface Product {
+  id: number;
+  title: string;
+  price: number;
+  location: string;
+  category: string;
+  image: string;
+  isFeature?: boolean;
+  date: string;
+}
 
-// Sample categories
 const CATEGORIES = [
   { id: 1, name: 'Electronics', icon: '🖥️' },
   { id: 2, name: 'Vehicles', icon: '🚗' },
@@ -101,17 +28,84 @@ const CATEGORIES = [
 ];
 
 const Home = () => {
-
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch('https://fakestoreapi.com/products');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        const mappedProducts = data.map((item: any, index: number) => {
+          const today = new Date();
+          const randomDaysAgo = Math.floor(Math.random() * 5);
+          const date = new Date(today);
+          date.setDate(today.getDate() - randomDaysAgo);
+
+          return {
+            id: item.id,
+            title: item.title,
+            price: item.price,
+            location: `Location ${index + 1}`,
+            category: item.category,
+            image: item.image,
+            isFeature: index % 2 === 0,
+            date: date.toLocaleDateString(),
+          };
+        });
+
+        setProducts(mappedProducts);
+      } catch (err) {
+        setError('Failed to fetch listings. Please try again later.');
+        console.error('Fetch error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  const formatDateDisplay = (dateString: string) => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const productDate = new Date(dateString);
+
+    if (productDate.toDateString() === today.toDateString()) return 'Today';
+    if (productDate.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return dateString;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <p className="text-red-500 text-xl">{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
-      <Navbar/>
-      {/* Category Navigation */}
+      <Navbar />
       <div className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-4 py-2"> 
+        <div className="container mx-auto px-4 py-2">
           <div className="flex items-center space-x-6">
-            {/* All Categories Dropdown */}
             <div className="relative">
               <button
                 className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 font-medium py-0.5 px-4 rounded-md hover:bg-gray-100 transition-all duration-200"
@@ -129,11 +123,11 @@ const Home = () => {
                 </svg>
               </button>
               {isDropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded-md w-56 z-10"> 
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded-md w-56 z-10">
                   <ul className="py-1 text-sm text-gray-700">
                     {CATEGORIES.map(category => (
                       <li key={category.id}>
-                        <button className="w-full flex items-center px-4 py-0.5 hover:bg-gray-100"> 
+                        <button className="w-full flex items-center px-4 py-0.5 hover:bg-gray-100">
                           <span>{category.name}</span>
                         </button>
                       </li>
@@ -142,13 +136,11 @@ const Home = () => {
                 </div>
               )}
             </div>
-
-            {/* Horizontal Category List */}
             <div className="flex items-center space-x-6 overflow-x-auto no-scrollbar">
               {CATEGORIES.slice(0, 6).map(category => (
                 <div
                   key={category.id}
-                  className="flex flex-col items-center min-w-max cursor-pointer hover:bg-gray-100 rounded-lg px-3 py-1 transition-all duration-200" 
+                  className="flex flex-col items-center min-w-max cursor-pointer hover:bg-gray-100 rounded-lg px-3 py-1 transition-all duration-200"
                 >
                   <div className="text-sm font-medium text-gray-700 mt-0 whitespace-nowrap">
                     {category.name}
@@ -159,24 +151,24 @@ const Home = () => {
           </div>
         </div>
       </div>
-      
-      {/* Main Content */}
+
       <main className="container mx-auto px-4 sm:px-6 md:px-10 lg:px-35 py-6">
-        {/* Featured Listings */}
         <div className="mb-8">
           <h2 className="text-2xl font-semibold mb-4">Fresh recommendations</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {SAMPLE_PRODUCTS.filter(product => product.isFeature).map(product => (
+            {products.filter(product => product.isFeature).map(product => (
               <div
                 key={product.id}
                 className="bg-white rounded shadow hover:shadow-md transition-shadow w-11/12 mx-auto sm:w-full"
               >
                 <div className="relative">
-                  <img
-                    src={product.image}
-                    alt={product.title}
-                    className="w-full h-48 sm:h-40 object-cover rounded-t"
-                  />
+                  <Link to={`/item/${product.id}`}>
+                    <img
+                      src={product.image}
+                      alt={product.title}
+                      className="w-full h-48 sm:h-40 object-cover rounded-t cursor-pointer"
+                    />
+                  </Link>
                   <button className="absolute top-2 right-2 bg-white p-1 rounded-full shadow">
                     <Heart size={20} className="text-gray-400 hover:text-red-500" />
                   </button>
@@ -192,23 +184,22 @@ const Home = () => {
                       <MapPin size={14} className="mr-1" />
                       {product.location}
                     </div>
-                    <div>{product.date}</div>
+                    <div>{formatDateDisplay(product.date)}</div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         </div>
-        {/* All Listings */}
         <div className="flex justify-center">
-          <button className="text-black bg-white border  border-black px-4 py-2 rounded">
+          <button className="text-black bg-white border border-black px-4 py-2 rounded">
             Load More
           </button>
         </div>
       </main>
 
-      <SubFooter/>
-      <Footer/>
+      <SubFooter />
+      <Footer />
     </div>
   );
 };

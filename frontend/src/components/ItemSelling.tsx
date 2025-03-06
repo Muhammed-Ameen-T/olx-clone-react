@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import Footer from "./Footer";
 import axios from "axios";
 
-// Define FormData interface (aligned with IAdvertisement)
 interface FormData {
   category: string;
   subCategory: string;
@@ -13,7 +12,7 @@ interface FormData {
   price: string;
   location: string;
   phone?: string;
-  user?: string; // Add user field to match the model
+  user?: string;
 }
 
 interface Errors {
@@ -25,13 +24,13 @@ interface Errors {
   price?: string;
   location?: string;
   phone?: string;
-  user?: string; // Add user field to errors
+  user?: string;
   images?: string;
   submit?: string;
 }
 
 const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/djqsehax7/image/upload";
-const CLOUDINARY_PRESET = "olx-clone";
+const CLOUDINARY_PRESET = "olx-clone1";
 const API_URL = "http://localhost:5000";
 
 const SellItemPage: React.FC = () => {
@@ -43,7 +42,7 @@ const SellItemPage: React.FC = () => {
     price: "",
     location: "",
     phone: localStorage.getItem("phone") || "9946276759",
-    user: localStorage.getItem("name") || "Guest", // Initialize with stored name
+    user: localStorage.getItem("name") || "Guest",
   });
 
   const [images, setImages] = useState<(File | null)[]>(Array(12).fill(null));
@@ -77,12 +76,10 @@ const SellItemPage: React.FC = () => {
       ...prev,
       [name]: value,
     }));
-
     setTouched((prev) => ({
       ...prev,
       [name]: true,
     }));
-
     validateField(name as keyof FormData, value);
   };
 
@@ -99,7 +96,6 @@ const SellItemPage: React.FC = () => {
 
   const validateField = (name: keyof FormData, value: string): boolean => {
     let errorMessage = "";
-
     switch (name) {
       case "category":
         errorMessage = !value ? "Category is required" : "";
@@ -135,12 +131,10 @@ const SellItemPage: React.FC = () => {
       default:
         break;
     }
-
     setErrors((prev) => ({
       ...prev,
       [name]: errorMessage || undefined,
     }));
-
     return !errorMessage;
   };
 
@@ -153,7 +147,7 @@ const SellItemPage: React.FC = () => {
       "price",
       "location",
       "phone",
-      "user", // Include user in required fields
+      "user",
     ];
 
     const allFieldsValid = requiredFields.every((field) => {
@@ -162,58 +156,47 @@ const SellItemPage: React.FC = () => {
     });
 
     const imagesValid = images.some((img) => img !== null) && !errors.images;
-
     return allFieldsValid && imagesValid;
   };
 
   const uploadImagesToCloudinary = async (files: (File | null)[]) => {
     const uploadedUrls: string[] = [];
     const validFiles = files.filter((file): file is File => file !== null);
-  
+
     if (validFiles.length === 0) {
       throw new Error("No images selected for upload");
     }
-  
+
     console.log("Files to upload:", validFiles.map(f => ({ name: f.name, size: f.size })));
-  
+
     for (const file of validFiles) {
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+      uploadData.append("upload_preset", CLOUDINARY_PRESET);
+
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("upload_preset", CLOUDINARY_PRESET); // "olx-clone"
-        formData.append("api_key", "784476692691618");
-  
         console.log(`Uploading ${file.name}...`);
-  
-        const response = await axios.post(CLOUDINARY_URL, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+        const response = await axios.post(CLOUDINARY_URL, uploadData, {
+          headers: { "Content-Type": "multipart/form-data" },
         });
-  
-        console.log(`Successfully uploaded ${file.name}: ${response.data.secure_url}`);
+        console.log(`Upload success for ${file.name}:`, response.data.secure_url);
         uploadedUrls.push(response.data.secure_url);
       } catch (error: any) {
-        console.error(`Failed to upload ${file.name}:`, {
+        console.error(`Upload failed for ${file.name}:`, {
           message: error.message,
           status: error.response?.status,
-          responseData: error.response?.data, // Ensure full data is logged
+          data: error.response?.data,
         });
-        throw new Error(
-          `Failed to upload ${file.name}: ${
-            error.response?.data?.message || error.message || "Unknown error"
-          }`
-        );
+        throw error;
       }
     }
-  
+
     return uploadedUrls;
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Update formData with current username before submitting
     setFormData(prev => ({
       ...prev,
       user: userName
@@ -227,7 +210,7 @@ const SellItemPage: React.FC = () => {
       "price",
       "location",
       "phone",
-      "user", // Include user in required fields
+      "user",
     ];
 
     let hasErrors = false;
@@ -262,21 +245,15 @@ const SellItemPage: React.FC = () => {
 
     try {
       const token = localStorage.getItem("token");
-      console.log("Token:", token);
       if (!token) {
         setErrors((prev) => ({ ...prev, submit: "Please login to post an ad" }));
-        navigate("/login");
+        navigate("/");
         return;
       }
 
-      console.log(images)
-
-      const uploadedImageUrls = await uploadImagesToCloudinary(images).catch((err) => {
-        console.error("Image upload error:", err);
-        throw new Error("Image upload failed");
-      });
+      const uploadedImageUrls = await uploadImagesToCloudinary(images);
       setImageUrls(uploadedImageUrls);
-      console.log("Uploaded images:", uploadedImageUrls);
+      console.log("Uploaded image URLs:", uploadedImageUrls);
 
       const advertisementData = {
         category: formData.category,
@@ -287,31 +264,36 @@ const SellItemPage: React.FC = () => {
         location: formData.location,
         phone: formData.phone,
         images: uploadedImageUrls,
-        user: formData.user, // Include user field in the data sent to the API
+        user: formData.user,
       };
-      console.log("Advertisement data:", advertisementData);
 
       const response = await axios.post(`${API_URL}/api/advertisements`, advertisementData, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log("Response:", response.data);
       if (response.status === 201) {
         alert("Your ad has been posted successfully!");
         navigate("/");
       }
     } catch (error: any) {
-      console.error("Full error details:", error.response || error);
-      setErrors((prev) => ({
-        ...prev,
-        submit: error.response?.data?.message || "Failed to post your ad. Please try again.",
-      }));
-      if (error.response?.status === 401) {
+      console.error("Submission error:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      let errorMessage = "Failed to post your ad. Please try again.";
+      if (error.response?.status === 404) {
+        errorMessage = "Backend endpoint not found. Check server configuration.";
+      } else if (error.response?.status === 401) {
+        errorMessage = "Unauthorized. Please login again.";
         localStorage.removeItem("token");
         localStorage.removeItem("name");
         localStorage.removeItem("phone");
-        navigate("/login");
+        navigate("/");
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
       }
+      setErrors((prev) => ({ ...prev, submit: errorMessage }));
     } finally {
       setIsSubmitting(false);
     }
@@ -379,14 +361,13 @@ const SellItemPage: React.FC = () => {
   };
 
   useEffect(() => {
-    validateField("phone", formData.phone);
-    validateField("user", formData.user);
+    validateField("phone", formData.phone || "");
+    validateField("user", formData.user || "");
     
     const token = localStorage.getItem("token");
     if (!token) {
-      navigate("/login");
+      navigate("/");
     } else {
-      // Update userName and formData if it changes in localStorage
       const storedName = localStorage.getItem("name");
       if (storedName && storedName !== userName) {
         setUserName(storedName);
